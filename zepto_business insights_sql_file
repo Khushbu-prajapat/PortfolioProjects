@@ -1,0 +1,137 @@
+DROP TABLE IF EXISTS zepto;
+
+CREATE TABLE zepto (
+sku_id SERIAL PRIMARY KEY,
+category VARCHAR(120),
+name VARCHAR(150) NOT NULL,
+mrp NUMERIC(8,2),
+discount_percent NUMERIC(5,2),
+available_quantity INTEGER,
+discounted_selling_price NUMERIC(8,2),
+weight_in_gms INTEGER,
+out_of_stock BOOLEAN,
+quantity INTEGER
+);
+
+SELECT * FROM zepto;
+
+--data exploration--
+
+--count of rows
+SELECT COUNT(*) FROM zepto;
+
+--sample data
+SELECT * FROM zepto
+LIMIT 10;
+
+--NULL VALUES
+SELECT * FROM zepto
+WHERE category IS NULL
+OR
+name IS NULL
+OR
+mrp IS NULL
+OR
+discount_percent IS NULL
+OR
+available_quantity IS NULL
+OR
+discounted_selling_price IS NULL
+OR
+weight_in_gms IS NULL
+OR
+out_of_stock IS NULL
+OR
+quantity IS NULL;
+
+--distinct product categories
+SELECT DISTINCT category
+FROM zepto
+ORDER BY category;
+
+--product in stock v/s out of stock
+SELECT out_of_stock , count(sku_id)
+FROM zepto
+GROUP BY out_of_stock;
+
+--product names present multiple times
+SELECT name, COUNT(sku_id)
+FROM zepto
+GROUP BY name
+HAVING COUNT(sku_id)>1
+ORDER BY COUNT(sku_id) DESC;
+
+--data cleaning--
+
+--products with price = 0
+SELECT * FROM zepto
+WHERE mrp = 0 OR discounted_selling_price = 0;
+
+DELETE FROM zepto
+WHERE mrp=0;
+
+--convert paise to rupees
+UPDATE zepto
+SET mrp = mrp/100,
+discounted_selling_price = discounted_selling_price/100;
+
+SELECT mrp , discounted_selling_price FROM zepto;
+
+--business insight queries--
+
+--Q1. Find the top 10 best-value products based on the discount percentage.
+SELECT DISTINCT name, discount_percent
+FROM zepto
+ORDER BY discount_percent DESC
+LIMIT 10;
+
+--Q2. What are the Products with High MRP but Out of Stock
+SELECT DISTINCT name, mrp
+FROM zepto
+WHERE mrp > 300 AND out_of_stock = TRUE
+ORDER BY mrp DESC;
+
+--Q3. Calculate Estimated Revenue for each category
+SELECT DISTINCT category,
+SUM(quantity * discounted_selling_price) AS total_revenue
+FROM zepto
+GROUP BY category
+ORDER BY total_revenue DESC;
+
+-- Q4. Find all products where MRP is greater than Rs.500 and discount is less than 10%.
+SELECT DISTINCT name, mrp, discount_percent
+FROM zepto
+WHERE mrp > 500 AND discount_percent < 10
+ORDER BY mrp DESC;
+
+-- Q5. Identify the top 5 categories offering the highest average discount percentage.
+SELECT DISTINCT category,
+ROUND(AVG(discount_percent),2) AS average_discount_percentage
+FROM zepto
+GROUP BY category
+ORDER BY average_discount_percentage DESC
+LIMIT 5;
+
+
+-- Q6. Find the price per gram for products above 100g and sort by best value.
+SELECT DISTINCT name, weight_in_gms, discounted_selling_price,
+ROUND(discounted_selling_price/weight_in_gms,2) as price_per_gm
+FROM zepto
+WHERE weight_in_gms >= 100
+ORDER BY price_per_gm DESC;
+
+--Q7. Group the products into categories like Low, Medium, Bulk.
+SELECT DISTINCT name, weight_in_gms,
+CASE WHEN weight_in_gms < 1000 THEN 'Low'
+WHEN weight_in_gms < 5000 THEN 'Medium'
+ELSE 'Bulk'
+END
+AS weight_category
+FROM zepto;
+
+--Q8.What is the Total Inventory Weight Per Category
+SELECT category,
+SUM(weight_in_gms * available_quantity) AS total_weight
+FROM zepto
+GROUP BY category
+ORDER BY total_weight;
